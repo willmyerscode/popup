@@ -163,6 +163,12 @@ body.wm-popup-open {
   top: 0;
 }
 
+/*Hide popup if Moved into last Section for loading*/
+#sections > section:last-of-type .content-wrapper > .temp-popup-container{
+  z-index:-1;
+  position:absolute;
+}
+
 /*Single Block*/
 .wm-popup-content > .sqs-block {
   background-color: var(--siteBackgroundColor);
