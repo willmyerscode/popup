@@ -1,3 +1,8 @@
+/**
+ * Popup Plugin For Squarespace
+ * Copywrite Will Myers @ Will-Myers.com
+ */
+
 if (typeof wmPopup === "undefined") {
   class wmPopup {
     static pluginTitle = "wmPopup";
@@ -200,6 +205,7 @@ if (typeof wmPopup === "undefined") {
 
       this.showPopupContent();
       this.activePopup = url;
+      Squarespace.initializeSummaryV2Block(Y, Y.one(this.overlay));
       wmPopup.emitEvent('wmPopup:afterOpenPopup', {
         url: url,
         selector: selector,
@@ -240,6 +246,7 @@ if (typeof wmPopup === "undefined") {
 
     async initializeContent(content) {
       const tempContainer = document.createElement("div");
+      tempContainer.classList.add('temp-popup-container')
       tempContainer.appendChild(content);
 
       // Insert the content into the last section for initialization
