@@ -149,6 +149,8 @@ if (typeof wmPopup === "undefined") {
       })
 
       this.scrollPosition = window.scrollY;
+      this.originalScrollBehavior = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = 'auto';
 
       // Add a class to the body to enable our scroll lock styles
       document.body.classList.add("wm-popup-open");
@@ -298,6 +300,9 @@ if (typeof wmPopup === "undefined") {
 
         // Restore the scroll position
         window.scrollTo(0, this.scrollPosition);
+        setTimeout(() => {
+          document.documentElement.style.scrollBehavior = this.originalScrollBehavior;
+        }, 50);
 
         this.overlay.style.display = "none";
         this.activePopup = null;
@@ -342,3 +347,4 @@ if (typeof wmPopup === "undefined") {
     window.wmPopup = new wmPopup();
   }
 }
+
