@@ -19,11 +19,7 @@ if (typeof wmPopup === "undefined") {
       loadingEl: `<div class="loading"></div>`,
       hooks: {
         beforeInit: [],
-        afterInit: [
-          function () {
-            wm$?.initializeAllPlugins();
-          },
-        ],
+        afterInit: [],
         beforeOpenPopup: [],
         afterOpenPopup: [],
         beforeClosePopup: [],
@@ -36,18 +32,17 @@ if (typeof wmPopup === "undefined") {
     static emitEvent(type, detail = {}, elem = document) {
       // Make sure there's an event type
       if (!type) return;
-    
+
       // Create a new event
       let event = new CustomEvent(type, {
         bubbles: true,
         cancelable: true,
         detail: detail,
       });
-    
+
       // Dispatch the event
       return elem.dispatchEvent(event);
     }
-    
 
     constructor() {
       this.settings = wm$.deepMerge(
@@ -66,11 +61,13 @@ if (typeof wmPopup === "undefined") {
 
     async init() {
       this.runHooks("beforeInit");
-      wmPopup.emitEvent('wmPopup:beforeInit')
+      wmPopup.emitEvent("wmPopup:beforeInit");
+      this.beforeInit();
       this.buildStructure();
       this.bindEvents();
       this.overlay.style.display = "none";
-      wmPopup.emitEvent('wmPopup:afterInit')
+      this.afterInit();
+      wmPopup.emitEvent("wmPopup:afterInit");
       this.runHooks("afterInit");
     }
 
@@ -133,24 +130,38 @@ if (typeof wmPopup === "undefined") {
       const link = e.target.closest('a[href^="#wm-popup="]');
       if (link) {
         e.preventDefault();
-        const urlParts = link.getAttribute("href").split("=")[1].split("#");
-        const url = urlParts[0];
-        const selector = urlParts[1] ? `#${urlParts[1]}` : null;
+        const fullPath = link.getAttribute("href").split("=")[1];
+        let url, selector;
+
+        if (fullPath.includes("#")) {
+          [url, selector] = fullPath.split("#");
+          selector = `#${selector}`;
+        } else if (fullPath.includes(".fe-")) {
+          const feIndex = fullPath.indexOf(".fe-");
+          url = fullPath.substring(0, feIndex);
+          selector = fullPath.substring(feIndex);
+        } else {
+          url = fullPath;
+          selector = null;
+        }
+
         await this.openPopup(url, selector);
       }
     }
 
     async openPopup(url, selector = null) {
       this.runHooks("beforeOpenPopup", url);
-      wmPopup.emitEvent('wmPopup:beforeOpenPopup', {
+      wmPopup.emitEvent("wmPopup:beforeOpenPopup", {
         url: url,
         selector: selector,
-        el: this.overlay
-      })
+        el: this.overlay,
+      });
+      this.beforeOpenPopup();
 
       this.scrollPosition = window.scrollY;
-      this.originalScrollBehavior = document.documentElement.style.scrollBehavior;
-      document.documentElement.style.scrollBehavior = 'auto';
+      this.originalScrollBehavior =
+        document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = "auto";
 
       // Add a class to the body to enable our scroll lock styles
       document.body.classList.add("wm-popup-open");
@@ -161,7 +172,7 @@ if (typeof wmPopup === "undefined") {
       document.body.style.width = "100%";
 
       this.overlay.style.display = "block";
-      this.container.style.display = "none"; // Hide the container initially
+      this.container.style.display = "none";
       this.loadingEl.style.display = "block";
       this.content.style.display = "none";
 
@@ -208,11 +219,12 @@ if (typeof wmPopup === "undefined") {
       this.showPopupContent();
       this.activePopup = url;
       Squarespace.initializeSummaryV2Block(Y, Y.one(this.overlay));
-      wmPopup.emitEvent('wmPopup:afterOpenPopup', {
+      this.afterOpenPopup();
+      wmPopup.emitEvent("wmPopup:afterOpenPopup", {
         url: url,
         selector: selector,
-        el: this.overlay
-      })
+        el: this.overlay,
+      });
       this.runHooks("afterOpenPopup", url);
     }
 
@@ -248,7 +260,7 @@ if (typeof wmPopup === "undefined") {
 
     async initializeContent(content) {
       const tempContainer = document.createElement("div");
-      tempContainer.classList.add('temp-popup-container')
+      tempContainer.classList.add("temp-popup-container");
       tempContainer.appendChild(content);
 
       // Insert the content into the last section for initialization
@@ -274,6 +286,7 @@ if (typeof wmPopup === "undefined") {
       if (!this.activePopup) return;
 
       this.runHooks("beforeClosePopup", this.activePopup);
+      this.beforeClosePopup();
 
       const closePopupContent = () => {
         if (this.originalParent) {
@@ -291,17 +304,18 @@ if (typeof wmPopup === "undefined") {
         }
 
         // Remove the class from the body
-        document.body.classList.remove('wm-popup-open');
+        document.body.classList.remove("wm-popup-open");
 
         // Reset the inline styles
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
 
         // Restore the scroll position
         window.scrollTo(0, this.scrollPosition);
         setTimeout(() => {
-          document.documentElement.style.scrollBehavior = this.originalScrollBehavior;
+          document.documentElement.style.scrollBehavior =
+            this.originalScrollBehavior;
         }, 50);
 
         this.overlay.style.display = "none";
@@ -309,6 +323,7 @@ if (typeof wmPopup === "undefined") {
         this.currentSelector = null;
         this.originalParent = null;
         this.originalNextSibling = null;
+        this.afterClosePopup();
         this.runHooks("afterClosePopup");
       };
 
@@ -340,6 +355,30 @@ if (typeof wmPopup === "undefined") {
         }
       });
     }
+    beforeInit() {}
+    afterInit() {
+      wm$?.initializeAllPlugins();
+    }
+    beforeOpenPopup() {}
+    afterOpenPopup() {
+      this.playSingleVideo();
+    }
+    beforeClosePopup() {}
+    afterClosePopup() {}
+    playSingleVideo() {
+      const hasOnlyVideo = this.content.querySelector(
+        ":scope > .sqs-block-video[data-block-json], :scope > .fe-block .sqs-block-video[data-block-json]"
+      );
+      if (hasOnlyVideo) {
+        window.setTimeout(() => {
+          const json = JSON.parse(hasOnlyVideo.dataset.blockJson);
+          const video = hasOnlyVideo.querySelector("video");
+          if (!json || !json.settings || !video) return;
+          video.muted = false;
+          json.settings.autoPlay ? video.play() : null;
+        }, 100);
+      }
+    }
   }
 
   // Initialize the popup only if it hasn't been initialized before
@@ -347,4 +386,3 @@ if (typeof wmPopup === "undefined") {
     window.wmPopup = new wmPopup();
   }
 }
-
