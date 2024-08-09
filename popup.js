@@ -127,12 +127,14 @@ if (typeof wmPopup === "undefined") {
     }
 
     async handleLinkClick(e) {
-      const link = e.target.closest('a[href^="#wm-popup="]');
+      const link = e.target.closest('a[href^="#wm-popup="], a[href^="#wmpopup="]');
       if (link) {
         e.preventDefault();
-        const fullPath = link.getAttribute("href").split("=")[1];
+        const href = link.getAttribute("href");
+        const prefixLength = href.startsWith("#wm-popup=") ? "#wm-popup=".length : "#wmpopup=".length;
+        const fullPath = href.substring(prefixLength);
         let url, selector;
-
+    
         if (fullPath.includes("#")) {
           [url, selector] = fullPath.split("#");
           selector = `#${selector}`;
@@ -140,11 +142,15 @@ if (typeof wmPopup === "undefined") {
           const feIndex = fullPath.indexOf(".fe-");
           url = fullPath.substring(0, feIndex);
           selector = fullPath.substring(feIndex);
+        } else if (fullPath.includes("[data-section-id=")) {
+          const dataSectionIndex = fullPath.indexOf("[data-section-id=");
+          url = fullPath.substring(0, dataSectionIndex);
+          selector = fullPath.substring(dataSectionIndex);
         } else {
           url = fullPath;
           selector = null;
         }
-
+    
         await this.openPopup(url, selector);
       }
     }
