@@ -190,3 +190,14 @@ body.wm-popup-open {
 .wm-popup-content > .fe-block .sqs-block.sqs-block-image {
   padding: 0px !important;
 }
+
+/*Content Fit Images*/
+.wm-popup-content > .fe-block .sqs-block-image .fluid-image-container:has(.content-fit),
+.wm-popup-content > .sqs-block-image .fluid-image-container:has(.content-fit){
+  max-height: var(--wm-popup-max-height);
+  min-width: 100% !important;
+}
+.wm-popup-content > .fe-block .sqs-block-image .fluid-image-container:has(.content-fit) img,
+.wm-popup-content > .sqs-block-image .fluid-image-container:has(.content-fit) img{
+  position: relative;
+}
