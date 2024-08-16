@@ -127,14 +127,18 @@ if (typeof wmPopup === "undefined") {
     }
 
     async handleLinkClick(e) {
-      const link = e.target.closest('a[href^="#wm-popup="], a[href^="#wmpopup="]');
+      const link = e.target.closest(
+        'a[href^="#wm-popup="], a[href^="#wmpopup="]'
+      );
       if (link) {
         e.preventDefault();
         const href = link.getAttribute("href");
-        const prefixLength = href.startsWith("#wm-popup=") ? "#wm-popup=".length : "#wmpopup=".length;
+        const prefixLength = href.startsWith("#wm-popup=")
+          ? "#wm-popup=".length
+          : "#wmpopup=".length;
         const fullPath = href.substring(prefixLength);
         let url, selector;
-    
+
         if (fullPath.includes("#")) {
           [url, selector] = fullPath.split("#");
           selector = `#${selector}`;
@@ -150,7 +154,7 @@ if (typeof wmPopup === "undefined") {
           url = fullPath;
           selector = null;
         }
-    
+
         await this.openPopup(url, selector);
       }
     }
@@ -181,6 +185,7 @@ if (typeof wmPopup === "undefined") {
       this.container.style.display = "none";
       this.loadingEl.style.display = "block";
       this.content.style.display = "none";
+      this.overlay.dataset.popupId = `${url}${selector ? selector : ''}`;
 
       if (this.settings.debugLoading) return;
 
@@ -216,6 +221,7 @@ if (typeof wmPopup === "undefined") {
         }
       } catch (error) {
         console.error("Error fetching or displaying popup content:", error);
+        this.overlay.dataset.popupId = null;
         const errorContent = this.createErrorContent(url, selector);
         this.popups.set(url, errorContent);
         this.content.appendChild(errorContent);
@@ -347,8 +353,10 @@ if (typeof wmPopup === "undefined") {
           // Reset overlay opacity and transition for next opening
           this.overlay.style.opacity = "";
           this.overlay.style.transition = "";
+          this.overlay.dataset.popupId = null;
         }, this.settings.openAnimationDuration);
       } else {
+        this.overlay.dataset.popupId = null;
         closePopupContent();
       }
     }
