@@ -185,7 +185,7 @@ if (typeof wmPopup === "undefined") {
       this.container.style.display = "none";
       this.loadingEl.style.display = "block";
       this.content.style.display = "none";
-      this.overlay.dataset.popupId = `${url}${selector ? selector : ''}`;
+      document.body.dataset.activePopup = `${url}${selector ? selector : ""}`;
 
       if (this.settings.debugLoading) return;
 
@@ -221,7 +221,7 @@ if (typeof wmPopup === "undefined") {
         }
       } catch (error) {
         console.error("Error fetching or displaying popup content:", error);
-        this.overlay.dataset.popupId = null;
+        document.body.dataset.activePopup = null;
         const errorContent = this.createErrorContent(url, selector);
         this.popups.set(url, errorContent);
         this.content.appendChild(errorContent);
@@ -353,10 +353,10 @@ if (typeof wmPopup === "undefined") {
           // Reset overlay opacity and transition for next opening
           this.overlay.style.opacity = "";
           this.overlay.style.transition = "";
-          this.overlay.dataset.popupId = null;
+          document.body.dataset.activePopup = null;
         }, this.settings.openAnimationDuration);
       } else {
-        this.overlay.dataset.popupId = null;
+        document.body.dataset.activePopup = null;
         closePopupContent();
       }
     }
