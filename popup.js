@@ -168,18 +168,17 @@ if (typeof wmPopup === "undefined") {
       });
       this.beforeOpenPopup();
 
+      // Calculate scrollbar width and add padding if needed
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      
       this.scrollPosition = window.scrollY;
-      this.originalScrollBehavior =
-        document.documentElement.style.scrollBehavior;
+      this.originalScrollBehavior = getComputedStyle(document.documentElement).scrollBehavior;
       document.documentElement.style.scrollBehavior = "auto";
 
-      // Add a class to the body to enable our scroll lock styles
+      // Add padding to both body and header to prevent layout shift
       document.body.classList.add("wm-popup-open");
-
-      // Apply inline styles to maintain scroll position
-      document.body.style.top = `-${this.scrollPosition}px`;
-      document.body.style.position = "fixed";
-      document.body.style.width = "100%";
+      document.body.style.setProperty('--wm-popup-freeze-scroll-padding-right', `${scrollbarWidth}px`);
+      document.body.style.setProperty('--wm-popup-freeze-scroll-top', `-${this.scrollPosition}px`);
 
       this.overlay.style.display = "block";
       this.container.style.display = "none";
@@ -285,8 +284,23 @@ if (typeof wmPopup === "undefined") {
       // Initialize the content
       wm$.initializeAllPlugins();
       await wm$.reloadSquarespaceLifecycle(tempContainer);
-      await wm$.initializeCodeBlocks(tempContainer);
-      await wm$.initializeThirdPartyPlugins(tempContainer);
+
+      try {
+        if (typeof wm$.initializeCodeBlocks === 'function') {
+          await wm$.initializeCodeBlocks(tempContainer);
+        }
+        if (typeof wm$.initializeEmbedBlocks === 'function') {
+          await wm$.initializeEmbedBlocks(tempContainer);
+        }
+        if (typeof wm$.initializeThirdPartyPlugins === 'function') {
+          await wm$.initializeThirdPartyPlugins(tempContainer);
+        }
+      } catch (error) {
+        console.error('Error during initialization:', error);
+      }
+
+      // await wm$.initializeCodeBlocks(tempContainer);
+      // await wm$.initializeThirdPartyPlugins(tempContainer);
 
       // Remove the temporary container from the DOM
       lastSection.removeChild(tempContainer);
@@ -318,17 +332,22 @@ if (typeof wmPopup === "undefined") {
         // Remove the class from the body
         document.body.classList.remove("wm-popup-open");
 
-        // Reset the inline styles
-        document.body.style.position = "";
-        document.body.style.top = "";
-        document.body.style.width = "";
+        // First, remove the fixed positioning but maintain the negative top
+        document.documentElement.style.scrollBehavior = 'unset'
 
-        // Restore the scroll position
+        // Restore scroll position before removing styles
         window.scrollTo(0, this.scrollPosition);
-        setTimeout(() => {
-          document.documentElement.style.scrollBehavior =
-            this.originalScrollBehavior;
-        }, 50);
+
+        // Reset all styles in a single frame to prevent flicker
+        requestAnimationFrame(() => {
+          document.body.style.removeProperty('--wm-popup-freeze-scroll-padding-right');
+          document.body.style.removeProperty('--wm-popup-freeze-scroll-top');
+          document.body.style.removeProperty('--wm-popup-freeze-scroll-scroll-behavior');
+          
+          setTimeout(() => {
+            document.documentElement.style.scrollBehavior = this.originalScrollBehavior || '';
+          }, 50);
+        });
 
         this.overlay.style.display = "none";
         this.activePopup = null;
