@@ -93,11 +93,15 @@
 
 body.wm-popup-open {
   overflow: hidden;
+} 
+
+body.wm-popup-open {
+  position: fixed;
+  width: calc(100% - var(--wm-popup-freeze-scroll-padding-right));
+  top: var(--wm-popup-freeze-scroll-top);
+  margin-right: var(--wm-popup-freeze-scroll-padding-right);
 }
 
-.wm-popup-content {
-  /* Add any additional styles for the content area */
-}
 
 .wm-popup-content .page-section:first-child {
   padding-top: unset !important;
@@ -166,6 +170,7 @@ body.wm-popup-open {
 .wm-popup-overlay .video-player .video-player__icons {
   top: 0;
 }
+
 
 /*Hide popup if Moved into last Section for loading*/
 #sections > section:last-of-type .content-wrapper > .temp-popup-container{
