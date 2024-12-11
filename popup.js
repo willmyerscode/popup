@@ -299,9 +299,6 @@ if (typeof wmPopup === "undefined") {
         console.error('Error during initialization:', error);
       }
 
-      // await wm$.initializeCodeBlocks(tempContainer);
-      // await wm$.initializeThirdPartyPlugins(tempContainer);
-
       // Remove the temporary container from the DOM
       lastSection.removeChild(tempContainer);
 
@@ -403,13 +400,33 @@ if (typeof wmPopup === "undefined") {
         ":scope > .sqs-block-video[data-block-json], :scope > .fe-block .sqs-block-video[data-block-json]"
       );
       if (hasOnlyVideo) {
-        window.setTimeout(() => {
-          const json = JSON.parse(hasOnlyVideo.dataset.blockJson);
-          const video = hasOnlyVideo.querySelector("video");
-          if (!json || !json.settings || !video) return;
-          video.muted = false;
-          json.settings.autoPlay ? video.play() : null;
-        }, 100);
+        const json = JSON.parse(hasOnlyVideo.dataset.blockJson);
+        let video = hasOnlyVideo.querySelector("video");
+        if (!json || !json.settings) return;
+
+        const playVideo = () => {
+          video.play().then(() => {
+            video.muted = false;
+          }).catch(error => {
+            console.log('Autoplay with sound failed:', error);
+            video.muted = true;
+            video.play();
+          });
+        };
+
+        const checkVideoLoaded = (attempts = 0) => {
+          video = hasOnlyVideo.querySelector("video");
+          if (video) {
+            video.addEventListener('canplay', playVideo, { once: true });
+            if (video.readyState >= 4) {
+              playVideo();
+            }
+          } else if (attempts < 10) {
+            setTimeout(() => checkVideoLoaded(attempts + 1), 100);
+          }
+        };
+
+        checkVideoLoaded();
       }
     }
   }
