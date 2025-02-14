@@ -135,12 +135,16 @@ if (typeof wmPopup === "undefined") {
 
     async handleLinkClick(e) {
       const link = e.target.closest(
-        'a[href^="#wm-popup="], a[href^="#wmpopup="]'
+        'a[href^="#wm-popup="], a[href^="#wmpopup="], a[href^="/#wm-popup="], a[href^="/#wmpopup="]'
       );
       if (link) {
         e.preventDefault();
         const href = link.getAttribute("href");
-        const prefixLength = href.startsWith("#wm-popup=")
+        const prefixLength = href.startsWith("/#wm-popup=")
+          ? "/#wm-popup=".length
+          : href.startsWith("/#wmpopup=")
+          ? "/#wmpopup=".length
+          : href.startsWith("#wm-popup=")
           ? "#wm-popup=".length
           : "#wmpopup=".length;
         const fullPath = href.substring(prefixLength);
@@ -446,7 +450,13 @@ if (typeof wmPopup === "undefined") {
       // First, fetch all content
       for (const link of popupLinks) {
         const href = link.getAttribute("href");
-        const prefixLength = href.startsWith("#wm-popup=") ? "#wm-popup=".length : "#wmpopup=".length;
+        const prefixLength = href.startsWith("/#wm-popup=")
+          ? "/#wm-popup=".length
+          : href.startsWith("/#wmpopup=")
+          ? "/#wmpopup=".length
+          : href.startsWith("#wm-popup=")
+          ? "#wm-popup=".length
+          : "#wmpopup=".length;
         const fullPath = href.substring(prefixLength);
         let url = fullPath.split('#')[0]; // Get just the URL part
         
