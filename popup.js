@@ -68,8 +68,9 @@ if (typeof wmPopup === "undefined") {
       this.bindEvents();
       this.overlay.style.display = "none";
       
-      // Add preloading logic
+      // Only create SEO container and preload if enabled
       if (this.settings.preloadContent) {
+        this.createSEOContainer();
         await this.preloadPopupContent();
       }
       
@@ -201,6 +202,7 @@ if (typeof wmPopup === "undefined") {
 
       try {
         if (!this.popups.has(url)) {
+          console.log("getting fragment");
           const content = await wm$.getFragment(url, "#sections");
           const initializedContent = await this.initializeContent(content);
           this.popups.set(url, initializedContent);
@@ -444,10 +446,7 @@ if (typeof wmPopup === "undefined") {
     // Add new method for preloading
     async preloadPopupContent() {
       const popupLinks = document.querySelectorAll('a[href^="#wm-popup="], a[href^="#wmpopup="]');
-      const tempContainer = document.createElement("div");
-      tempContainer.classList.add("temp-popup-container");
       
-      // First, fetch all content
       for (const link of popupLinks) {
         const href = link.getAttribute("href");
         const prefixLength = href.startsWith("/#wm-popup=")
@@ -463,11 +462,15 @@ if (typeof wmPopup === "undefined") {
         if (!this.popups.has(url)) {
           try {
             const content = await wm$.getFragment(url, "#sections");
-            // Create a wrapper for this specific popup content
-            const popupWrapper = document.createElement("div");
-            popupWrapper.dataset.popupUrl = url;
-            popupWrapper.appendChild(content);
-            tempContainer.appendChild(popupWrapper);
+            const wrapper = document.createElement("div");
+            wrapper.dataset.popupUrl = url;
+            wrapper.dataset.popupContent = 'true';
+            wrapper.appendChild(content);
+            console.log(wrapper);
+            const result = await this.initializeContent(wrapper);
+            console.log(result);
+            this.seoContainer.appendChild(wrapper);
+            this.popups.set(url, result);
           } catch (error) {
             console.error(`Error preloading popup content for ${url}:`, error);
             const errorContent = this.createErrorContent(url);
@@ -475,42 +478,25 @@ if (typeof wmPopup === "undefined") {
           }
         }
       }
+    }
 
-      if (tempContainer.children.length > 0) {
-        // Insert all content into the last section for initialization
-        const lastSection = document.querySelector(
-          "#sections > section:last-of-type .content-wrapper"
-        );
-        lastSection.appendChild(tempContainer);
-
-        // Initialize all content at once
-        wm$.initializeAllPlugins();
-        await wm$.reloadSquarespaceLifecycle(tempContainer);
-
-        try {
-          if (typeof wm$.initializeCodeBlocks === 'function') {
-            await wm$.initializeCodeBlocks(tempContainer);
-          }
-          if (typeof wm$.initializeEmbedBlocks === 'function') {
-            await wm$.initializeEmbedBlocks(tempContainer);
-          }
-          if (typeof wm$.initializeThirdPartyPlugins === 'function') {
-            await wm$.initializeThirdPartyPlugins(tempContainer);
-          }
-        } catch (error) {
-          console.error('Error during initialization:', error);
-        }
-
-        // Store each popup content separately
-        tempContainer.querySelectorAll('[data-popup-url]').forEach(wrapper => {
-          const url = wrapper.dataset.popupUrl;
-          const content = wrapper.firstChild;
-          this.popups.set(url, content);
-        });
-
-        // Remove the temporary container from the DOM
-        lastSection.removeChild(tempContainer);
-      }
+    createSEOContainer() {
+      const seoContainer = document.createElement('div');
+      seoContainer.className = 'wm-popup-seo-container';
+      seoContainer.setAttribute('aria-hidden', 'true');
+      seoContainer.style.cssText = `
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      `;
+      document.querySelector("#siteWrapper").appendChild(seoContainer);
+      this.seoContainer = seoContainer;
     }
   }
 
