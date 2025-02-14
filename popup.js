@@ -16,6 +16,7 @@ if (typeof wmPopup === "undefined") {
       maxHeight: "80vh",
       zIndex: 9999,
       debugLoading: false,
+      preloadContent: false,
       loadingEl: `<div class="loading"></div>`,
       hooks: {
         beforeInit: [],
@@ -66,6 +67,12 @@ if (typeof wmPopup === "undefined") {
       this.buildStructure();
       this.bindEvents();
       this.overlay.style.display = "none";
+      
+      // Add preloading logic
+      if (this.settings.preloadContent) {
+        await this.preloadPopupContent();
+      }
+      
       this.afterInit();
       wmPopup.emitEvent("wmPopup:afterInit");
       this.runHooks("afterInit");
@@ -427,6 +434,72 @@ if (typeof wmPopup === "undefined") {
         };
 
         checkVideoLoaded();
+      }
+    }
+
+    // Add new method for preloading
+    async preloadPopupContent() {
+      const popupLinks = document.querySelectorAll('a[href^="#wm-popup="], a[href^="#wmpopup="]');
+      const tempContainer = document.createElement("div");
+      tempContainer.classList.add("temp-popup-container");
+      
+      // First, fetch all content
+      for (const link of popupLinks) {
+        const href = link.getAttribute("href");
+        const prefixLength = href.startsWith("#wm-popup=") ? "#wm-popup=".length : "#wmpopup=".length;
+        const fullPath = href.substring(prefixLength);
+        let url = fullPath.split('#')[0]; // Get just the URL part
+        
+        if (!this.popups.has(url)) {
+          try {
+            const content = await wm$.getFragment(url, "#sections");
+            // Create a wrapper for this specific popup content
+            const popupWrapper = document.createElement("div");
+            popupWrapper.dataset.popupUrl = url;
+            popupWrapper.appendChild(content);
+            tempContainer.appendChild(popupWrapper);
+          } catch (error) {
+            console.error(`Error preloading popup content for ${url}:`, error);
+            const errorContent = this.createErrorContent(url);
+            this.popups.set(url, errorContent);
+          }
+        }
+      }
+
+      if (tempContainer.children.length > 0) {
+        // Insert all content into the last section for initialization
+        const lastSection = document.querySelector(
+          "#sections > section:last-of-type .content-wrapper"
+        );
+        lastSection.appendChild(tempContainer);
+
+        // Initialize all content at once
+        wm$.initializeAllPlugins();
+        await wm$.reloadSquarespaceLifecycle(tempContainer);
+
+        try {
+          if (typeof wm$.initializeCodeBlocks === 'function') {
+            await wm$.initializeCodeBlocks(tempContainer);
+          }
+          if (typeof wm$.initializeEmbedBlocks === 'function') {
+            await wm$.initializeEmbedBlocks(tempContainer);
+          }
+          if (typeof wm$.initializeThirdPartyPlugins === 'function') {
+            await wm$.initializeThirdPartyPlugins(tempContainer);
+          }
+        } catch (error) {
+          console.error('Error during initialization:', error);
+        }
+
+        // Store each popup content separately
+        tempContainer.querySelectorAll('[data-popup-url]').forEach(wrapper => {
+          const url = wrapper.dataset.popupUrl;
+          const content = wrapper.firstChild;
+          this.popups.set(url, content);
+        });
+
+        // Remove the temporary container from the DOM
+        lastSection.removeChild(tempContainer);
       }
     }
   }
