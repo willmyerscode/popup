@@ -202,7 +202,6 @@ if (typeof wmPopup === "undefined") {
 
       try {
         if (!this.popups.has(url)) {
-          console.log("getting fragment");
           const content = await wm$.getFragment(url, "#sections");
           const initializedContent = await this.initializeContent(content);
           this.popups.set(url, initializedContent);
@@ -288,11 +287,24 @@ if (typeof wmPopup === "undefined") {
       tempContainer.appendChild(content);
 
       // Insert the content into the last section for initialization
-      const lastSection = document.querySelector(
-        "#sections > section:last-of-type .content-wrapper"
-      );
+      let lastSection = null;
+      if (document.querySelector("#sections > section:last-of-type .content-wrapper")) {
+        lastSection = document.querySelector(
+          "#sections > section:last-of-type .content-wrapper"
+        );
+      } else if (document.querySelector("#page .system-page")) {
+        lastSection = document.querySelector(
+          "#page .system-page"
+        );
+      } else {
+        console.error("No last section found");
+      }
 
-      lastSection.appendChild(tempContainer);
+      if (lastSection) {
+        lastSection.appendChild(tempContainer);
+      } else {
+        console.error("No last section found");
+      }
 
       // Initialize the content
       wm$.initializeAllPlugins();
@@ -466,9 +478,7 @@ if (typeof wmPopup === "undefined") {
             wrapper.dataset.popupUrl = url;
             wrapper.dataset.popupContent = 'true';
             wrapper.appendChild(content);
-            console.log(wrapper);
             const result = await this.initializeContent(wrapper);
-            console.log(result);
             this.seoContainer.appendChild(wrapper);
             this.popups.set(url, result);
           } catch (error) {
