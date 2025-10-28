@@ -173,7 +173,7 @@ body.wm-popup-open {
 
 
 /*Hide popup if Moved into last Section for loading*/
-#sections > section:last-of-type .content-wrapper > .temp-popup-container{
+#sections > section:last-of-type .content-wrapper > .temp-popup-container, #page-regions > section:last-of-type .content-wrapper > .temp-popup-container{
   z-index:-1;
   position:absolute;
 }
