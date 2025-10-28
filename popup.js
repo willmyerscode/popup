@@ -73,6 +73,7 @@ if (typeof wmPopup === "undefined") {
         this.createSEOContainer();
         await this.preloadPopupContent();
       }
+
       
       this.afterInit();
       wmPopup.emitEvent("wmPopup:afterInit");
@@ -201,6 +202,7 @@ if (typeof wmPopup === "undefined") {
       if (this.settings.debugLoading) return;
 
       try {
+
         if (!this.popups.has(url)) {
           const content = await wm$.getFragment(url, "#sections");
           const initializedContent = await this.initializeContent(content);
@@ -288,9 +290,9 @@ if (typeof wmPopup === "undefined") {
 
       // Insert the content into the last section for initialization
       let lastSection = null;
-      if (document.querySelector("#sections > section:last-of-type .content-wrapper")) {
+      if (document.querySelector("#sections > section:last-of-type .content-wrapper, #page-regions > section:last-of-type .content-wrapper")) {
         lastSection = document.querySelector(
-          "#sections > section:last-of-type .content-wrapper"
+          "#sections > section:last-of-type .content-wrapper, #page-regions > section:last-of-type .content-wrapper"
         );
       } else if (document.querySelector("#page .system-page")) {
         lastSection = document.querySelector(
