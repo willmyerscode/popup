@@ -294,6 +294,9 @@ if (typeof wmPopup === "undefined") {
         lastSection = document.querySelector(
           "#sections > section:last-of-type .content-wrapper, #page-regions > section:last-of-type .content-wrapper"
         );
+      } else if (document.querySelectorAll("#sections .page-section").length > 0) {
+        const pageSections = document.querySelectorAll("#sections .page-section");
+        lastSection = pageSections[pageSections.length - 1];
       } else if (document.querySelector("#page .system-page")) {
         lastSection = document.querySelector(
           "#page .system-page"
