@@ -272,6 +272,7 @@ if (typeof wmPopup === "undefined") {
       this.content.style.display = "block";
       this.container.style.display = "block"; // Show the container
       this.container.style.opacity = "0";
+      this.loadAllImages(this.content);
 
       if (this.settings.openAnimation === "fade") {
         setTimeout(() => {
@@ -425,6 +426,15 @@ if (typeof wmPopup === "undefined") {
     }
     beforeClosePopup() {}
     afterClosePopup() {}
+    loadAllImages(el = document) {
+      const imageLoader = window.ImageLoader || window.Squarespace?.ImageLoader;
+      if (!imageLoader || typeof imageLoader.load !== "function") return;
+
+      const images = el.querySelectorAll("img[data-src]");
+      for (let i = 0; i < images.length; i++) {
+        imageLoader.load(images[i], { load: true });
+      }
+    }
     playSingleVideo() {
       const hasOnlyVideo = this.content.querySelector(
         ":scope > .sqs-block-video[data-block-json], :scope > .fe-block .sqs-block-video[data-block-json]"
