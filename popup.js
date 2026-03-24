@@ -273,6 +273,7 @@ if (typeof wmPopup === "undefined") {
       this.container.style.display = "block"; // Show the container
       this.container.style.opacity = "0";
       this.loadAllImages(this.content);
+      this.queueLayoutRefresh();
 
       if (this.settings.openAnimation === "fade") {
         setTimeout(() => {
@@ -377,6 +378,10 @@ if (typeof wmPopup === "undefined") {
           }, 50);
         });
 
+        // Reset modal scroll so the next open doesn't reuse the previous popup's position
+        this.container.scrollTop = 0;
+        this.container.scrollLeft = 0;
+
         this.overlay.style.display = "none";
         this.activePopup = null;
         this.currentSelector = null;
@@ -433,6 +438,18 @@ if (typeof wmPopup === "undefined") {
       const images = el.querySelectorAll("img[data-src]");
       for (let i = 0; i < images.length; i++) {
         imageLoader.load(images[i], { load: true });
+      }
+    }
+    queueLayoutRefresh() {
+      // Native resize is global; prefer targeted gallery refresh in popup, fallback to resize.
+      const refresh = () => {
+        Squarespace.initializeLayoutBlocks(Y, Y.one(this.content));  
+      };
+
+      requestAnimationFrame(refresh);
+
+      if (this.settings.openAnimation === "fade") {
+        setTimeout(refresh, this.settings.openAnimationDuration + 20);
       }
     }
     playSingleVideo() {
