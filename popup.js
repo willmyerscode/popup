@@ -205,8 +205,13 @@ if (typeof wmPopup === "undefined") {
 
         if (!this.popups.has(url)) {
           const content = await wm$.getFragment(url, "#sections");
-          const initializedContent = await this.initializeContent(content);
-          this.popups.set(url, initializedContent);
+          if (!content.children || content.children.length === 0) {
+            const emptyContent = this.createEmptyContent(url);
+            this.popups.set(url, emptyContent);
+          } else {
+            const initializedContent = await this.initializeContent(content);
+            this.popups.set(url, initializedContent);
+          }
         }
 
         const popupContent = this.popups.get(url);
@@ -251,6 +256,13 @@ if (typeof wmPopup === "undefined") {
         el: this.overlay,
       });
       this.runHooks("afterOpenPopup", url);
+    }
+
+    createEmptyContent(url) {
+      const emptyElement = document.createElement("div");
+      emptyElement.className = "wm-popup-empty";
+      emptyElement.innerHTML = `<p>This page doesn't have any sections yet. Add a section to <strong>${url}</strong> to see content here.</p>`;
+      return emptyElement;
     }
 
     createErrorContent(url, selector) {
