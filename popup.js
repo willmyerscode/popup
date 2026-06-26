@@ -18,6 +18,13 @@ if (typeof wmPopup === "undefined") {
       debugLoading: false,
       preloadContent: false,
       loadingEl: `<div class="loading"></div>`,
+      a11y: {
+        dialogLabel: "Dialog",
+        closeLabel: "Close",
+        moveFocus: true,
+        trapFocus: true,
+        returnFocus: true,
+      },
       hooks: {
         beforeInit: [],
         afterInit: [],
@@ -57,6 +64,7 @@ if (typeof wmPopup === "undefined") {
       this.originalParent = null;
       this.originalNextSibling = null;
       this.scrollPosition = 0;
+      this.triggerElement = null;
       this.init();
     }
 
@@ -86,10 +94,16 @@ if (typeof wmPopup === "undefined") {
 
       const container = document.createElement("div");
       container.className = "wm-popup-container";
+      container.setAttribute("role", "dialog");
+      container.setAttribute("aria-modal", "true");
+      container.setAttribute("tabindex", "-1");
+      container.setAttribute("aria-label", this.settings.a11y.dialogLabel);
 
       const closeButton = document.createElement("button");
       closeButton.className = "wm-popup-close";
-      closeButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+      closeButton.type = "button";
+      closeButton.setAttribute("aria-label", this.settings.a11y.closeLabel);
+      closeButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6" aria-hidden="true" focusable="false">
       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
     </svg>`;
 
@@ -126,12 +140,70 @@ if (typeof wmPopup === "undefined") {
           }
         });
       }
-      if (this.settings.closeOnEscape) {
-        document.addEventListener("keydown", e => {
-          if (e.key === "Escape") {
-            this.closePopup();
-          }
-        });
+      this._handleKeydown = this.handleKeydown.bind(this);
+      document.addEventListener("keydown", this._handleKeydown);
+    }
+
+    handleKeydown(e) {
+      if (!this.activePopup) return;
+
+      if (e.key === "Escape" && this.settings.closeOnEscape) {
+        this.closePopup();
+        return;
+      }
+
+      if (e.key !== "Tab" || !this.settings.a11y.trapFocus) return;
+
+      const focusable = this.getFocusableElements();
+      // Nothing focusable (e.g. an image- or text-only popup): keep focus parked
+      // on the dialog box so Tab can't escape to the background.
+      if (!focusable.length) {
+        e.preventDefault();
+        this.container.focus({ preventScroll: true });
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      const outside = !this.overlay.contains(active);
+
+      if (e.shiftKey && (active === first || outside)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || outside)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    getFocusableElements() {
+      // Queried live on each Tab because popup content is injected/initialized
+      // after open. Scoped to the overlay so the close button is always included,
+      // even when closePlacement puts it outside the container.
+      const selector =
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+        'textarea:not([disabled]), iframe, audio[controls], video[controls], summary, ' +
+        '[tabindex]:not([tabindex="-1"])';
+      return Array.from(this.overlay.querySelectorAll(selector)).filter(
+        el => el.offsetWidth || el.offsetHeight || el.getClientRects().length
+      );
+    }
+
+    setDialogAccessibleName() {
+      // Derive the name from the content's first heading so it works on any site;
+      // fall back to the configurable label when there's no heading.
+      const heading = this.content.querySelector("h1, h2, h3, h4, h5, h6");
+      if (heading) {
+        if (!heading.id) {
+          wmPopup._uid = (wmPopup._uid || 0) + 1;
+          heading.id = `wm-popup-title-${wmPopup._uid}`;
+        }
+        this.container.setAttribute("aria-labelledby", heading.id);
+        this.container.removeAttribute("aria-label");
+      } else {
+        this.container.removeAttribute("aria-labelledby");
+        this.container.setAttribute("aria-label", this.settings.a11y.dialogLabel);
       }
     }
 
@@ -168,6 +240,7 @@ if (typeof wmPopup === "undefined") {
           selector = null;
         }
 
+        this.triggerElement = link;
         await this.openPopup(url, selector);
       }
     }
@@ -180,6 +253,10 @@ if (typeof wmPopup === "undefined") {
         el: this.overlay,
       });
       this.beforeOpenPopup();
+
+      // Remember what to return focus to on close. handleLinkClick sets this to
+      // the clicked link; this fallback covers programmatic openPopup() calls.
+      if (!this.triggerElement) this.triggerElement = document.activeElement;
 
       // Calculate scrollbar width and add padding if needed
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
@@ -243,6 +320,13 @@ if (typeof wmPopup === "undefined") {
 
       this.showPopupContent();
       this.activePopup = url;
+
+      // Announce the dialog and move focus into it.
+      this.setDialogAccessibleName();
+      if (this.settings.a11y.moveFocus) {
+        this.container.focus({ preventScroll: true });
+      }
+
       Squarespace.initializeSummaryV2Block(Y, Y.one(this.overlay));
       this.afterOpenPopup();
       wmPopup.emitEvent("wmPopup:afterOpenPopup", {
@@ -387,6 +471,19 @@ if (typeof wmPopup === "undefined") {
         this.currentSelector = null;
         this.originalParent = null;
         this.originalNextSibling = null;
+
+        // Return focus to whatever opened the popup. preventScroll because the
+        // plugin restores scroll position itself just above.
+        const trigger = this.triggerElement;
+        this.triggerElement = null;
+        if (
+          this.settings.a11y.returnFocus &&
+          trigger &&
+          typeof trigger.focus === "function"
+        ) {
+          trigger.focus({ preventScroll: true });
+        }
+
         this.afterClosePopup();
         this.runHooks("afterClosePopup");
       };
