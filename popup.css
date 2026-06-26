@@ -91,6 +91,14 @@
   stroke-width: var(--wm-popup-close-thickness);
 }
 
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .wm-popup-overlay,
+  .wm-popup-container {
+    transition-duration: 0.01ms !important;
+  }
+}
+
 body.wm-popup-open {
   overflow: hidden;
 } 
