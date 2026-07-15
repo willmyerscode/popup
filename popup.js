@@ -281,7 +281,7 @@ if (typeof wmPopup === "undefined") {
       try {
 
         if (!this.popups.has(url)) {
-          const content = await wm$.getFragment(url, "#sections");
+          const content = await wm$.getFragment(url, "#sections, #page-regions");
           const initializedContent = await this.initializeContent(content);
           this.popups.set(url, initializedContent);
         }
@@ -602,7 +602,7 @@ if (typeof wmPopup === "undefined") {
         
         if (!this.popups.has(url)) {
           try {
-            const content = await wm$.getFragment(url, "#sections");
+            const content = await wm$.getFragment(url, "#sections, #page-regions");
             const wrapper = document.createElement("div");
             wrapper.dataset.popupUrl = url;
             wrapper.dataset.popupContent = 'true';
