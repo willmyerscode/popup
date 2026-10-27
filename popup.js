@@ -391,6 +391,12 @@ if (typeof wmPopup === "undefined") {
         console.error("No last section found");
       }
 
+      // Squarespace binds section controllers once per root it finds
+      // (#page-regions, [data-page-sections], ...). The fetched root nested in
+      // this page's root would bind every popup section twice (e.g. a gallery
+      // slideshow opening on slide 2), so mask its root markers during init.
+      const restoreRoots = this.maskSectionRoots(tempContainer);
+
       if (lastSection) {
         lastSection.appendChild(tempContainer);
       } else {
@@ -417,8 +423,40 @@ if (typeof wmPopup === "undefined") {
 
       // Remove the temporary container from the DOM
       lastSection.removeChild(tempContainer);
+      restoreRoots();
 
       return tempContainer.firstChild;
+    }
+
+    maskSectionRoots(el) {
+      const rootAttrs = [
+        "data-page-sections",
+        "data-collection-item-sections",
+        "data-footer-sections",
+      ];
+      const roots = el.querySelectorAll(
+        `#page-regions, ${rootAttrs.map(a => `[${a}]`).join(", ")}`
+      );
+      const masked = Array.from(roots).map(root => {
+        const saved = { root, id: root.getAttribute("id"), attrs: {} };
+        if (saved.id === "page-regions") root.removeAttribute("id");
+        rootAttrs.forEach(attr => {
+          if (root.hasAttribute(attr)) {
+            saved.attrs[attr] = root.getAttribute(attr);
+            root.removeAttribute(attr);
+          }
+        });
+        return saved;
+      });
+
+      return () => {
+        masked.forEach(({ root, id, attrs }) => {
+          if (id === "page-regions") root.setAttribute("id", id);
+          Object.entries(attrs).forEach(([attr, value]) =>
+            root.setAttribute(attr, value)
+          );
+        });
+      };
     }
 
     closePopup() {
