@@ -319,6 +319,7 @@ if (typeof wmPopup === "undefined") {
       }
 
       this.showPopupContent();
+      this.initializeComments();
       this.activePopup = url;
 
       // Announce the dialog and move focus into it.
@@ -620,6 +621,86 @@ if (typeof wmPopup === "undefined") {
 
         checkVideoLoaded();
       }
+    }
+
+    async initializeComments() {
+      // Squarespace only renders blog comments on page load, so a fetched post
+      // arrives with an empty .squarespace-comments container. Build the native
+      // comments widget into it, the same way Squarespace does on a post page.
+      const el = this.content.querySelector(".squarespace-comments[data-item-id]");
+      if (!el || el.dataset.wmPopupComments) return;
+
+      const context = window.Static?.SQUARESPACE_CONTEXT;
+      const settings = context?.websiteSettings;
+      if (!settings?.commentsEnabled || settings.disqusShortname) return;
+
+      // The widget looks up its parts page-wide (.comment-list, .comment-count),
+      // so a second thread on the page would wire up to the first one.
+      const otherThread = Array.from(
+        document.querySelectorAll(".squarespace-comments")
+      ).find(other => other !== el && other.querySelector(".comment-list"));
+      if (otherThread) {
+        console.warn("wmPopup: comments are already showing on this page, so the popup's comments were not loaded.");
+        return;
+      }
+
+      // Comment state 2 is disabled: hide an empty thread, show the rest read-only.
+      const commentState = parseInt(el.dataset.commentState, 10);
+      const commentCount = parseInt(el.dataset.publicCommentCount, 10) || 0;
+      const disabled = commentState === 2;
+      if (disabled && commentCount === 0) return;
+
+      el.dataset.wmPopupComments = "loading";
+      try {
+        await this.loadRollups(context.rollups, ["squarespace-dialog", "squarespace-comments"]);
+        Y.use("squarespace-comments", Y => {
+          const comments = new Y.Squarespace.Comments({
+            containerEl: el,
+            identifier: el.dataset.itemId,
+            type: 1, // ITEM
+            publicCommentCount: commentCount,
+            likesAllowed: settings.commentLikesAllowed,
+            flagsAllowed: settings.commentFlagsAllowed,
+            threaded: settings.commentThreaded,
+            approvalRequired: settings.commentApprovalRequired,
+            allowAnon: settings.commentAnonAllowed,
+            avatarsOn: settings.commentAvatarsOn,
+            readOnly: disabled,
+            sortType: settings.commentSortType,
+          });
+          comments.create();
+          el.dataset.wmPopupComments = "loaded";
+        });
+      } catch (error) {
+        delete el.dataset.wmPopupComments;
+        console.error("wmPopup: error loading comments:", error);
+      }
+    }
+
+    loadRollups(rollups = {}, names) {
+      // Inject Squarespace's own script + stylesheet for each module the page
+      // hasn't loaded. Plain tags, because YUI's loader doesn't know these URLs
+      // on pages that never registered them.
+      const pending = names
+        .filter(name => !YUI.Env.mods[name])
+        .map(name => {
+          const rollup = rollups[name];
+          if (!rollup?.js) throw new Error(`No Squarespace rollup for "${name}".`);
+          if (rollup.css) {
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = rollup.css;
+            document.head.appendChild(link);
+          }
+          return new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = rollup.js;
+            script.onload = resolve;
+            script.onerror = () => reject(new Error(`Failed to load "${name}".`));
+            document.head.appendChild(script);
+          });
+        });
+      return Promise.all(pending);
     }
 
     // Add new method for preloading
