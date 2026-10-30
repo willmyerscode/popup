@@ -653,7 +653,12 @@ if (typeof wmPopup === "undefined") {
       el.dataset.wmPopupComments = "loading";
       try {
         await this.loadRollups(context.rollups, ["squarespace-dialog", "squarespace-comments"]);
+        // Attaching the module runs Squarespace's page-load setup straight away,
+        // which renders into the first .squarespace-comments on the page. Hide
+        // the class during attach so the thread is only built once, below.
+        el.classList.remove("squarespace-comments");
         Y.use("squarespace-comments", Y => {
+          el.classList.add("squarespace-comments");
           const comments = new Y.Squarespace.Comments({
             containerEl: el,
             identifier: el.dataset.itemId,
@@ -672,6 +677,7 @@ if (typeof wmPopup === "undefined") {
           el.dataset.wmPopupComments = "loaded";
         });
       } catch (error) {
+        el.classList.add("squarespace-comments");
         delete el.dataset.wmPopupComments;
         console.error("wmPopup: error loading comments:", error);
       }
